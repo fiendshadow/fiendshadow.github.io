@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Генератор Накладных</title>
+    <style>
+        :root {
+            --bg-color: #f2f2f7;
+            --card-bg: #ffffff;
+            --text-color: #1c1c1e;
+            --accent-color: #007aff;
+            --danger-color: #ff3b30;
+            --border-color: #e5e5ea;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-color: #1c1c1e;
+                --card-bg: #2c2c2e;
+                --text-color: #ffffff;
+                --accent-color: #0a84ff;
+                --danger-color: #ff453a;
+                --border-color: #38383a;
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: calc(env(safe-area-inset-top) + 16px) 16px calc(env(safe-area-inset-bottom) + 32px) 16px;
+        }
+
+        h1, h2, h3 {
+            margin-top: 0;
+            font-weight: 700;
+        }
+
+        h1 { font-size: 22px; margin-bottom: 20px; text-align: center; }
+        h2 { font-size: 17px; margin-bottom: 12px; }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+
+        .form-group {
+            margin-bottom: 12px;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 4px;
+            opacity: 0.8;
+        }
+
+        input, select {
+            width: 100%;
+            height: 44px;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-color);
+            padding: 0 12px;
+            font-size: 16px;
+            font-family: inherit;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 44px;
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn:active { opacity: 0.7; }
+        .btn-secondary { background-color: #8e8e93; }
+
+        .row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        
+        .row-three {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr 1.2fr;
+            gap: 8px;
+        }
+
+        .service-list {
+            max-height: 150px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 4px;
+        }
+
+        .service-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 14px;
+        }
+        .service-item:last-child { border-bottom: none; }
+
+        .delete-icon {
+            color: var(--danger-color);
+            font-weight: bold;
+            padding: 4px 8px;
+            cursor: pointer;
+        }
+
+        /* СТИЛИЗАЦИЯ ПОД НАСТОЯЩУЮ НАКЛАДНУЮ */
+        .invoice-paper {
+            background: #ffffff;
+            color: #000000;
+            border-radius: 8px;
+            padding: 20px 12px;
+            border: 1px solid #d1d1d6;
+            font-family: Georgia, "Times New Roman", serif;
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            /* Оставляем накладную светлой для реалистичного предпросмотра печатного листа */
+            .invoice-paper {
+                background: #f8f9fa;
+                color: #1c1c1e;
+            }
+        }
+
+        .invoice-header {
+            text-align: center;
+            border-bottom: 2px solid #000000;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+        }
+
+        .invoice-title {
+            font-size: 15px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .invoice-subtitle {
+            font-size: 11px;
+            font-style: italic;
+            opacity: 0.8;
+        }
+
+        .invoice-meta {
+            font-size: 13px;
+            margin-bottom: 16px;
+            line-height: 1.4;
+        }
+
+        .invoice-meta div {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px dashed #c7c7cc;
+            padding: 2px 0;
+        }
+
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        .invoice-paper table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            min-width: 460px;
+        }
+
+        .invoice-paper th {
+            background: #e5e5ea;
+            color: #000000;
+            font-weight: bold;
+            border: 1px solid #000000;
+            padding: 6px 4px;
+            text-align: center;
+        }
+
+        .invoice-paper td {
+            border: 1px solid #000000;
+            padding: 6px 4px;
+            vertical-align: middle;
+        }
+
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+
+        .invoice-paper .total-row {
+            font-weight: bold;
+            background: #f2f2f7;
+        }
+        
+        .invoice-paper .total-row td {
+            border-top: 2px solid #000000;
+        }
+
+        .remove-cell {
+            color: var(--danger-color);
+            text-align: center;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+            border: none !important;
+            background: transparent !important;
+            width: 24px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Учёт Работ</h1>
+
+    <div class="card">
+        <h2>Данные накладной</h2>
+        <div class="form-group">
+            <label for="obj-name">Объект / Адрес</label>
+            <input type="text" id="obj-name" value="ул. Шиназская 26">
+        </div>
+        <div class="form-group">
+            <label for="obj-type">Тип работ</label>
+            <input type="text" id="obj-type" value="Комплексный монтаж потолков и осветительного оборудования">
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>1. Справочник услуг (Цены)</h2>
+        <div class="form-group">
+            <label for="new-service-name">Название услуги/работы</label>
+            <input type="text" id="new-service-name" placeholder="Например: Сложный угол">
+        </div>
+        <div class="row">
+            <div class="form-group">
+                <label for="new-service-unit">Ед. изм.</label>
+                <select id="new-service-unit">
+                    <option value="кв. м">кв. м</option>
+                    <option value="п/м">п/м</option>
+                    <option value="ед.">ед.</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="new-service-price">Цена за ед. (₽)</label>
+                <input type="number" id="new-service-price" inputmode="decimal" placeholder="0.00">
+            </div>
+        </div>
+        <button class="btn" onclick="saveService()">Сохранить / Изменить цену</button>
+
+        <h3 style="font-size: 13px; margin-top: 14px; margin-bottom: 6px;">Сохраненный прайс-лист:</h3>
+        <div class="service-list" id="services-storage-list"></div>
+    </div>
+
+    <div class="card">
+        <h2>2. Составление накладной</h2>
+        <div class="form-group">
+            <label for="invoice-service-select">Выберите из прайса</label>
+            <select id="invoice-service-select" onchange="onServiceSelectChange()">
+                <option value="">-- Выбрать услугу --</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="invoice-service-custom">Или введите вручную</label>
+            <input type="text" id="invoice-service-custom" placeholder="Если нет в списке выше">
+        </div>
+        
+        <div class="row-three">
+            <div class="form-group">
+                <label for="invoice-unit">Ед. изм.</label>
+                <select id="invoice-unit">
+                    <option value="кв. м">кв. м</option>
+                    <option value="п/м">п/м</option>
+                    <option value="ед.">ед.</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="invoice-quantity">Объем</label>
+                <input type="number" id="invoice-quantity" inputmode="decimal" step="any" value="1">
+            </div>
+            <div class="form-group">
+                <label for="invoice-price">Цена (₽)</label>
+                <input type="number" id="invoice-price" inputmode="decimal" placeholder="0.00">
+            </div>
+        </div>
+        <button class="btn" onclick="addItemToInvoice()" style="background-color: #34c759;">Добавить в накладную</button>
+    </div>
+
+    <div class="card" style="padding: 10px;">
+        <h2>3. Предпросмотр накладной</h2>
+        
+        <div class="invoice-paper">
+            <div class="invoice-header">
+                <div class="invoice-title">Накладная (Расчет стоимости работ)</div>
+                <div class="invoice-subtitle" id="paper-work-type">Комплексный монтаж потолков</div>
+            </div>
+            
+            <div class="invoice-meta">
+                <div><span><b>Объект:</b></span><span id="paper-obj-name">ул. Шиназская 26</span></div>
+                <div><span><b>Дата:</b></span><span id="paper-date">18.06.2026</span></div>
+            </div>
+
+            <div class="table-responsive">
+                <table id="invoice-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 30px;">№</th>
+                            <th>Наименование услуги</th>
+                            <th style="width: 50px;">Ед. изм.</th>
+                            <th style="width: 60px;">Объем работ</th>
+                            <th style="width: 80px;">Стоимость единицы (руб.)</th>
+                            <th style="width: 90px;">Общая стоимость (руб.)</th>
+                            <th class="remove-cell" style="border:none; background:transparent;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="invoice-tbody">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div style="margin-top: 16px;" class="row">
+            <button class="btn btn-secondary" onclick="clearInvoice()">Очистить</button>
+            <button class="btn" onclick="exportToCSV()">Экспорт (CSV)</button>
+        </div>
+    </div>
+
+    <script>
+        // Твоя реальная база данных из файла Таблица 2.xlsx
+        const defaultServices = [
+            { name: "Прямой потолок", unit: "кв. м", price: 1400 },
+            { name: "Монтаж сан.узел", unit: "кв. м", price: 1500 },
+            { name: "Монтаж потолка лестничный проем", unit: "кв. м", price: 1900 },
+            { name: "Монтаж трековых светильников", unit: "п/м", price: 2000 },
+            { name: "Монтаж встроенных светильников", unit: "ед.", price: 1000 },
+            { name: "Вывод проводов по схеме", unit: "ед.", price: 300 }
+        ];
+
+        let servicesCatalog = JSON.parse(localStorage.getItem('servicesCatalog_potolki'));
+        if (!servicesCatalog || servicesCatalog.length === 0) {
+            servicesCatalog = defaultServices;
+            localStorage.setItem('servicesCatalog_potolki', JSON.stringify(servicesCatalog));
+        }
+
+        let currentInvoice = [];
+
+        // Синхронизация шапки в реальном времени
+        const objNameInput = document.getElementById('obj-name');
+        const objTypeInput = document.getElementById('obj-type');
+        const paperObjName = document.getElementById('paper-obj-name');
+        const paperWorkType = document.getElementById('paper-work-type');
+        
+        document.getElementById('paper-date').textContent = new Date().toLocaleDateString('ru-RU');
+
+        objNameInput.addEventListener('input', () => paperObjName.textContent = objNameInput.value);
+        objTypeInput.addEventListener('input', () => paperWorkType.textContent = objTypeInput.value);
+
+        const newServiceName = document.getElementById('new-service-name');
+        const newServiceUnit = document.getElementById('new-service-unit');
+        const newServicePrice = document.getElementById('new-service-price');
+        const servicesStorageList = document.getElementById('services-storage-list');
+        const invoiceServiceSelect = document.getElementById('invoice-service-select');
+        const invoiceServiceCustom = document.getElementById('invoice-service-custom');
+        const invoiceUnit = document.getElementById('invoice-unit');
+        const invoiceQuantity = document.getElementById('invoice-quantity');
+        const invoicePrice = document.getElementById('invoice-price');
+        const invoiceTbody = document.getElementById('invoice-tbody');
+
+        // Инициализация при загрузке
+        paperObjName.textContent = objNameInput.value;
+        paperWorkType.textContent = objTypeInput.value;
+        updateCatalogUI();
+        renderInvoiceTable();
+
+        function saveService() {
+            const name = newServiceName.value.trim();
+            const unit = newServiceUnit.value;
+            const price = parseFloat(newServicePrice.value) || 0;
+
+            if (!name) return alert('Введите название работы');
+
+            const existingIndex = servicesCatalog.findIndex(s => s.name.toLowerCase() === name.toLowerCase());
+            if (existingIndex > -1) {
+                servicesCatalog[existingIndex].price = price;
+                servicesCatalog[existingIndex].unit = unit;
+            } else {
+                servicesCatalog.push({ name, unit, price });
+            }
+
+            localStorage.setItem('servicesCatalog_potolki', JSON.stringify(servicesCatalog));
+            newServiceName.value = '';
+            newServicePrice.value = '';
+            updateCatalogUI();
+        }
+
+        function deleteCatalogService(index) {
+            if (confirm("Удалить позицию из справочника?")) {
+                servicesCatalog.splice(index, 1);
+                localStorage.setItem('servicesCatalog_potolki', JSON.stringify(servicesCatalog));
+                updateCatalogUI();
+            }
+        }
+
+        function updateCatalogUI() {
+            servicesStorageList.innerHTML = '';
+            invoiceServiceSelect.innerHTML = '<option value="">-- Выбрать услугу --</option>';
+
+            servicesCatalog.forEach((service, index) => {
+                const div = document.createElement('div');
+                div.className = 'service-item';
+                div.innerHTML = `
+                    <span>${service.name} (${service.unit}) — <b>${service.price} ₽</b></span>
+                    <span class="delete-icon" onclick="deleteCatalogService(${index})">✕</span>
+                `;
+                servicesStorageList.appendChild(div);
+
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = `${service.name} (${service.unit})`;
+                invoiceServiceSelect.appendChild(option);
+            });
+        }
+
+        function onServiceSelectChange() {
+            const selectedIndex = invoiceServiceSelect.value;
+            if (selectedIndex !== "") {
+                const service = servicesCatalog[selectedIndex];
+                invoicePrice.value = service.price;
+                invoiceUnit.value = service.unit;
+                invoiceServiceCustom.value = '';
+            } else {
+                invoicePrice.value = '';
+            }
+        }
+
+        function addItemToInvoice() {
+            let name = "";
+            let unit = invoiceUnit.value;
+
+            const selectedIndex = invoiceServiceSelect.value;
+            if (selectedIndex !== "") {
+                name = servicesCatalog[selectedIndex].name;
+            } else {
+                name = invoiceServiceCustom.value.trim();
+            }
+
+            const qty = parseFloat(invoiceQuantity.value) || 0;
+            const price = parseFloat(invoicePrice.value) || 0;
+
+            if (!name) return alert('Выберите работу или введите вручную');
+            if (qty <= 0) return alert('Укажите объем работ');
+
+            currentInvoice.push({
+                name,
+                unit,
+                qty,
+                price,
+                sum: qty * price
+            });
+
+            invoiceServiceSelect.value = "";
+            invoiceServiceCustom.value = "";
+            invoiceQuantity.value = "1";
+            invoicePrice.value = "";
+
+            renderInvoiceTable();
+        }
+
+        function removeInvoiceItem(index) {
+            currentInvoice.splice(index, 1);
+            renderInvoiceTable();
+        }
+
+        function clearInvoice() {
+            if (confirm("Очистить текущую накладную?")) {
+                currentInvoice = [];
+                renderInvoiceTable();
+            }
+        }
+
+        function renderInvoiceTable() {
+            invoiceTbody.innerHTML = '';
+            let totalSum = 0;
+
+            currentInvoice.forEach((item, index) => {
+                totalSum += item.sum;
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="text-center">${index + 1}</td>
+                    <td>${item.name}</td>
+                    <td class="text-center">${item.unit}</td>
+                    <td class="text-center">${item.qty}</td>
+                    <td class="text-right">${item.price}</td>
+                    <td class="text-right">${item.sum}</td>
+                    <td class="remove-cell" onclick="removeInvoiceItem(${index})">✕</td>
+                `;
+                invoiceTbody.appendChild(tr);
+            });
+
+            // Строка ИТОГО К ОПЛАТЕ точно как в исходнике
+            if (currentInvoice.length > 0) {
+                const totalTr = document.createElement('tr');
+                totalTr.className = 'total-row';
+                totalTr.innerHTML = `
+                    <td colspan="5"><b>ИТОГО К ОПЛАТЕ:</b></td>
+                    <td class="text-right"><b>${totalSum}</b></td>
+                    <td style="border:none; background:transparent;"></td>
+                `;
+                invoiceTbody.appendChild(totalTr);
+            }
+        }
+
+        function exportToCSV() {
+            if (currentInvoice.length === 0) return alert("Добавьте хотя бы одну строку для экспорта.");
+
+            let csvContent = "\uFEFF"; // Поддержка кириллицы в Excel
+            
+            // Шапка накладной
+            csvContent += `;;;;;Объект:;\"${objNameInput.value}\"\n`;
+            csvContent += `;;;;;Дата:;\"${document.getElementById('paper-date').textContent}\"\n`;
+            csvContent += `,\"НАКЛАДНАЯ (РАСЧЕТ СТОИМОСТИ РАБОТ)\"\n`;
+            csvContent += `,\"${objTypeInput.value}\"\n\n`;
+            
+            // Заголовки таблицы
+            csvContent += "№;Наименование услуги;Ед. изм.;Объем работ;Стоимость единицы (руб.);Общая стоимость (руб.)\n";
+
+            let totalSum = 0;
+            currentInvoice.forEach((item, index) => {
+                totalSum += item.sum;
+                csvContent += `${index + 1};\"${item.name}\";\"${item.unit}\";\"${item.qty}\";\"${item.price}\";\"${item.sum}\"\n`;
+            });
+            
+            csvContent += `\n"ИТОГО К ОПЛАТЕ";;;;;\"${totalSum}\"\n`;
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const dateStr = new Date().toISOString().slice(0,10);
+            
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute("download", `nakladnaya_${dateStr}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
