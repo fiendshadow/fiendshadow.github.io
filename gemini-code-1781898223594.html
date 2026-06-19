@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#1c1c1e" media="(prefers-color-scheme: dark)">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Учёт Работ — Натяжные Потолки</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #f2f2f7;
+            --card-bg: #ffffff;
+            --text-color: #1c1c1e;
+            --accent-color: #007aff;
+            --accent-soft: rgba(0, 122, 255, 0.1);
+            --danger-color: #ff3b30;
+            --danger-soft: rgba(255, 59, 48, 0.1);
+            --border-color: #e5e5ea;
+            --success-color: #34c759;
+            --stripe-color: rgba(127, 127, 127, 0.05);
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-color: #1c1c1e;
+                --card-bg: #2c2c2e;
+                --text-color: #ffffff;
+                --accent-color: #0a84ff;
+                --accent-soft: rgba(10, 132, 255, 0.15);
+                --danger-color: #ff453a;
+                --danger-soft: rgba(255, 69, 58, 0.15);
+                --border-color: #38383a;
+                --success-color: #30d158;
+                --stripe-color: rgba(255, 255, 255, 0.04);
+            }
+        }
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: calc(env(safe-area-inset-top) + 16px) 16px calc(env(safe-area-inset-bottom) + 104px) 16px;
+        }
+        h1, h2, h3 { margin-top: 0; font-weight: 700; }
+        h1 { font-size: 23px; text-align: center; margin-bottom: 4px; }
+        .subtitle { text-align: center; font-size: 13px; opacity: 0.55; margin-bottom: 20px; }
+        .card-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
+        h2 { display: flex; align-items: center; gap: 10px; font-size: 16px; margin-bottom: 0; }
+        .step-num {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 24px; height: 24px; min-width: 24px; border-radius: 50%;
+            background-color: var(--accent-color); color: #fff;
+            font-size: 12.5px; font-weight: 700;
+        }
+        .count-pill {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 4px 10px;
+            font-size: 12px;
+            font-weight: 600;
+            opacity: 0.75;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 14px;
+            padding: 16px;
+            margin-bottom: 18px;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+        }
+        .form-group { margin-bottom: 12px; }
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 4px;
+            opacity: 0.8;
+        }
+        input, select {
+            width: 100%;
+            height: 44px;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-color);
+            padding: 0 12px;
+            font-size: 16px;
+            font-family: inherit;
+        }
+        input:focus, select:focus { outline: none; border-color: var(--accent-color); }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-6px); }
+            40% { transform: translateX(6px); }
+            60% { transform: translateX(-4px); }
+            80% { transform: translateX(4px); }
+        }
+        .invalid { border-color: var(--danger-color) !important; animation: shake .3s; }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 44px;
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s, transform .15s;
+        }
+        .btn:active { opacity: 0.7; transform: scale(0.99); }
+        .btn-success { background-color: var(--success-color); }
+        .btn-secondary { background-color: #8e8e93; }
+        .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .row-three { display: grid; grid-template-columns: 0.85fr 1.3fr 1fr; gap: 8px; }
+
+        .stepper {
+            display: flex; align-items: stretch; height: 44px;
+            border: 1px solid var(--border-color); border-radius: 8px;
+            overflow: hidden; background-color: var(--bg-color);
+        }
+        .stepper input {
+            border: none; text-align: center; height: 100%; flex: 1;
+            min-width: 0; padding: 0 2px; background: transparent; color: var(--text-color);
+        }
+        .stepper-btn {
+            width: 32px; flex-shrink: 0; border: none; background: transparent;
+            color: var(--accent-color); font-size: 19px; font-weight: 700; cursor: pointer;
+        }
+        .stepper-btn:active { background-color: rgba(127,127,127,0.15); }
+        
+        .service-list { max-height: 160px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 4px; }
+        .service-item {
+            display: flex; justify-content: space-between; align-items: center; gap: 8px;
+            padding: 9px 8px; border-bottom: 1px solid var(--border-color); font-size: 14px;
+        }
+        .service-item:last-child { border-bottom: none; }
+        .service-item-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; overflow: hidden; }
+        .service-item-text .name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .service-item-text .meta { font-size: 12px; opacity: 0.6; font-variant-numeric: tabular-nums; }
+        .empty-hint { padding: 22px 8px; text-align: center; font-size: 13px; opacity: 0.5; }
+        
+        .delete-icon {
+            color: var(--danger-color); font-weight: bold;
+            background: none; border: none; width: 32px; height: 32px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; font-size: 14px; cursor: pointer;
+        }
+        .delete-icon:active { background-color: var(--danger-soft); }
+
+        /* БУМАЖНЫЙ ДИЗАЙН НАКЛАДНОЙ */
+        .invoice-paper-wrapper {
+            background: var(--card-bg);
+            padding: 2px;
+            border-radius: 10px;
+        }
+        .invoice-paper {
+            background: #ffffff !important;
+            color: #000000 !important;
+            border-radius: 8px;
+            padding: 20px 14px;
+            border: 1px solid #b5b5b7;
+            font-family: Georgia, "Times New Roman", serif;
+        }
+        /* Принудительно светлый вид для экспорта в фото */
+        .invoice-paper * { color: #000000 !important; border-color: #000000 !important; }
+        
+        .invoice-header { text-align: center; border-bottom: 2px solid #000000; padding-bottom: 8px; margin-bottom: 12px; }
+        .invoice-title { font-size: 15px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+        .invoice-subtitle { font-size: 11px; font-style: italic; opacity: 0.8; text-align: center; }
+        .invoice-meta { font-size: 13px; margin-bottom: 16px; line-height: 1.4; }
+        .invoice-meta div { display: flex; justify-content: space-between; border-bottom: 1px dashed #b5b5b7; padding: 2px 0; }
+
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            border: 1px solid #000000;
+            border-radius: 4px;
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 11px; text-align: left; min-width: 460px; }
+        th, td { padding: 7px 5px; border: 1px solid #000000; vertical-align: middle; background: #fff !important; }
+        th { background-color: #eaeaea !important; font-weight: bold; text-align: center; }
+        th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
+        .text-center { text-align: center; }
+        
+        .empty-row td { text-align: center; padding: 34px 12px; opacity: 0.5; font-size: 13px; border: none; }
+        .total-row td { font-weight: 700; background-color: #f5f5f5 !important; border-top: 2px solid #000000; }
+        
+        /* Скрытие кнопки удаления при генерации скриншота */
+        .actions-cell { text-align: center; width: 30px; padding: 4px; }
+        .row-delete-btn {
+            background-color: #fff0f0; color: #ff3b30 !important;
+            border: 1px solid #ffcccc; width: 24px; height: 24px; border-radius: 50%;
+            font-size: 11px; font-weight: 700; cursor: pointer;
+        }
+
+        /* Нижний плавающий бар управления */
+        .sticky-bar {
+            position: fixed; left: 0; right: 0; bottom: 0;
+            background-color: var(--card-bg);
+            border-top: 1px solid var(--border-color);
+            padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+            display: flex; align-items: center; justify-content: space-between; gap: 8px;
+            box-shadow: 0 -6px 18px rgba(0,0,0,0.08);
+            z-index: 150;
+        }
+        .sticky-bar-info { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
+        .sticky-bar-label { font-size: 11px; opacity: 0.6; }
+        .sticky-bar-value { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .sticky-bar-actions { display: flex; gap: 6px; flex-shrink: 0; }
+        
+        .icon-btn {
+            height: 44px; border: none; border-radius: 10px;
+            font-size: 14px; font-weight: 600; padding: 0 12px;
+            display: flex; align-items: center; gap: 6px; cursor: pointer;
+        }
+        .icon-btn-excel { background-color: #107c41; color: #fff; }
+        .icon-btn-image { background-color: #007aff; color: #fff; }
+        .icon-btn-secondary { background-color: var(--bg-color); color: var(--danger-color); border: 1px solid var(--border-color); width: 44px; justify-content: center; padding: 0; }
+        .icon-btn:active { opacity: 0.7; transform: scale(0.96); }
+
+        /* Уведомления */
+        #app-toast {
+            position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom));
+            transform: translate(-50%, 16px); background: rgba(28,28,30,0.96); color: #fff;
+            padding: 10px 14px; border-radius: 10px; font-size: 14px;
+            display: flex; align-items: center; gap: 14px; justify-content: space-between;
+            opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; z-index: 200; max-width: 88%;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+        }
+        #app-toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+        .toast-undo-btn { background: none; border: none; color: #5ab1ff; font-weight: 700; cursor: pointer; }
+
+        /* Модалка очистки */
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 300; opacity: 0; pointer-events: none; transition: opacity .2s; padding: 24px;
+        }
+        .modal-overlay.show { opacity: 1; pointer-events: auto; }
+        .modal-box {
+            background: var(--card-bg); border-radius: 14px; padding: 20px;
+            max-width: 320px; width: 100%; text-align: center;
+            transform: scale(0.92); transition: transform .2s;
+        }
+        .modal-overlay.show .modal-box { transform: scale(1); }
+        .modal-box p { margin: 0 0 18px; font-size: 15px; line-height: 1.4; }
+        .modal-actions { display: flex; gap: 10px; }
+    </style>
+</head>
+<body>
+    <h1>🧾 Учёт работ</h1>
+    <p class="subtitle">Потолки & Освещение → Накладная → Сохранить как Фото</p>
+
+    <div class="card">
+        <div class="card-header">
+            <h2><span class="step-num">0</span>Данные накладной</h2>
+        </div>
+        <div class="form-group">
+            <label for="obj-name">Объект / Адрес</label>
+            <input type="text" id="obj-name" value="ул. Шиназская 26">
+        </div>
+        <div class="form-group">
+            <label for="obj-type">Тип работ</label>
+            <input type="text" id="obj-type" value="Комплексный монтаж потолков и осветительного оборудования">
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2><span class="step-num">1</span>Справочник услуг (цены)</h2>
+        </div>
+        <div class="form-group">
+            <label for="new-service-name">Название услуги/работы</label>
+            <input type="text" id="new-service-name" placeholder="Например: Световой профиль">
+        </div>
+        <div class="row">
+            <div class="form-group">
+                <label for="new-service-unit">Ед. изм.</label>
+                <select id="new-service-unit"></select>
+            </div>
+            <div class="form-group">
+                <label for="new-service-price">Цена за ед. (₽)</label>
+                <input type="number" id="new-service-price" inputmode="decimal" min="0" step="0.01" placeholder="0.00">
+            </div>
+        </div>
+        <button class="btn" onclick="saveService()">Сохранить в справочник</button>
+        <h3 style="font-size: 13px; margin-top: 16px; margin-bottom: 6px; opacity: 0.7;">Сохранённые позиции</h3>
+        <div class="service-list" id="services-storage-list"></div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2><span class="step-num">2</span>Составление накладной</h2>
+        </div>
+        <div class="form-group">
+            <label for="invoice-service-select">Выберите из справочника</label>
+            <select id="invoice-service-select" onchange="onServiceSelectChange()">
+                <option value="">-- Выбрать услугу --</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="invoice-service-custom">Или введите вручную</label>
+            <input type="text" id="invoice-service-custom" placeholder="Если нет в каталоге">
+        </div>
+        <div class="row-three">
+            <div class="form-group">
+                <label for="invoice-unit">Ед. изм.</label>
+                <select id="invoice-unit"></select>
+            </div>
+            <div class="form-group">
+                <label for="invoice-quantity">Объем</label>
+                <div class="stepper">
+                    <button type="button" class="stepper-btn" onclick="stepQuantity(-1)">−</button>
+                    <input type="number" id="invoice-quantity" inputmode="decimal" value="1" min="0.01" step="0.01">
+                    <button type="button" class="stepper-btn" onclick="stepQuantity(1)">+</button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="invoice-price">Цена (₽)</label>
+                <input type="number" id="invoice-price" inputmode="decimal" min="0" step="0.01" placeholder="0.00">
+            </div>
+        </div>
+        <button class="btn btn-success" onclick="addItemToInvoice()">Добавить в накладную</button>
+    </div>
+
+    <div class="card" id="invoice-table-card" style="padding: 10px;">
+        <div class="card-header" style="padding: 6px 6px 0 6px;">
+            <h2><span class="step-num">3</span>Предпросмотр накладной</h2>
+            <span class="count-pill" id="item-count-badge">0 позиций</span>
+        </div>
+        
+        <div class="invoice-paper-wrapper">
+            <div class="invoice-paper" id="capture-target">
+                <div class="invoice-header">
+                    <div class="invoice-title">Накладная (Расчет стоимости работ)</div>
+                    <div class="invoice-subtitle" id="paper-work-type">Комплексный монтаж потолков</div>
+                </div>
+                
+                <div class="invoice-meta">
+                    <div><span><b>Объект:</b></span><span id="paper-obj-name">ул. Шиназская 26</span></div>
+                    <div><span><b>Дата:</b></span><span id="paper-date">--.--.----</span></div>
+                </div>
+
+                <div class="table-responsive">
+                    <table id="invoice-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 30px;">№</th>
+                                <th>Наименование услуги</th>
+                                <th style="width: 45px;">Ед. изм.</th>
+                                <th style="width: 50px;" class="num">Объем</th>
+                                <th style="width: 70px;" class="num">Цена (руб.)</th>
+                                <th style="width: 80px;" class="num">Сумма (руб.)</th>
+                                <th class="actions-cell data-html2canvas-ignore"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="invoice-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="sticky-bar">
+        <div class="sticky-bar-info">
+            <span class="sticky-bar-label">Итого к оплате</span>
+            <span class="sticky-bar-value" id="sticky-total-value">0,00 ₽</span>
+        </div>
+        <div class="sticky-bar-actions">
+            <button class="icon-btn icon-btn-secondary" onclick="clearInvoice()">🗑</button>
+            <button class="icon-btn icon-btn-excel" onclick="exportToExcel()">📊 Excel</button>
+            <button class="icon-btn icon-btn-image" onclick="exportToImage()">📸 В Фото</button>
+        </div>
+    </div>
+
+    <div id="app-toast"></div>
+
+    <div class="modal-overlay" id="confirm-overlay">
+        <div class="modal-box">
+            <p id="confirm-message">Вы уверены?</p>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="confirm-no">Отмена</button>
+                <button class="btn" id="confirm-yes" style="background-color: var(--danger-color);">Удалить</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const UNITS = ['кв. м', 'п/м', 'ед.', 'шт.'];
+
+        const defaultServices = [
+            { name: "Прямой потолок", unit: "кв. м", price: 1400 },
+            { name: "Монтаж сан.узел", unit: "кв. м", price: 1500 },
+            { name: "Монтаж потолка лестничный проем", unit: "кв. м", price: 1900 },
+            { name: "Монтаж трековых светильников", unit: "п/м", price: 2000 },
+            { name: "Монтаж встроенных светильников", unit: "ед.", price: 1000 },
+            { name: "Вывод проводов по схеме", unit: "ед.", price: 300 }
+        ];
+
+        let servicesCatalog = [];
+        let currentInvoice = [];
+        let lastRemoved = null;
+        let toastTimeout = null;
+
+        try { 
+            servicesCatalog = JSON.parse(localStorage.getItem('servicesCatalog_potolki_v4')) || defaultServices;
+        } catch (e) { servicesCatalog = defaultServices; }
+
+        const objNameInput = document.getElementById('obj-name');
+        const objTypeInput = document.getElementById('obj-type');
+        const paperObjName = document.getElementById('paper-obj-name');
+        const paperWorkType = document.getElementById('paper-work-type');
+        const paperDate = document.getElementById('paper-date');
+
+        const newServiceName = document.getElementById('new-service-name');
+        const newServiceUnit = document.getElementById('new-service-unit');
+        const newServicePrice = document.getElementById('new-service-price');
+        const servicesStorageList = document.getElementById('services-storage-list');
+        const invoiceServiceSelect = document.getElementById('invoice-service-select');
+        const invoiceServiceCustom = document.getElementById('invoice-service-custom');
+        const invoiceUnit = document.getElementById('invoice-unit');
+        const invoiceQuantity = document.getElementById('invoice-quantity');
+        const invoicePrice = document.getElementById('invoice-price');
+        const invoiceTbody = document.getElementById('invoice-tbody');
+        const itemCountBadge = document.getElementById('item-count-badge');
+        const appToast = document.getElementById('app-toast');
+        const confirmOverlay = document.getElementById('confirm-overlay');
+        const confirmMessage = document.getElementById('confirm-message');
+        const confirmYesBtn = document.getElementById('confirm-yes');
+        const confirmNoBtn = document.getElementById('confirm-no');
+
+        paperDate.textContent = new Date().toLocaleDateString('ru-RU');
+        objNameInput.addEventListener('input', () => paperObjName.textContent = objNameInput.value);
+        objTypeInput.addEventListener('input', () => paperWorkType.textContent = objTypeInput.value);
+
+        function escapeHtml(str) { return String(str).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;'); }
+        function round2(num) { return Math.round((num + Number.EPSILON) * 100) / 100; }
+        function formatMoney(num) { return round2(num).toLocaleString('ru-RU', { minimumFractionDigits: 2 }) + ' ₽'; }
+        function flagInvalid(el) { el.classList.add('invalid'); setTimeout(() => el.classList.remove('invalid'), 350); }
+        function populateUnitSelect(selectEl) { selectEl.innerHTML = UNITS.map(u => `<option value="${u}">${u}</option>`).join(''); }
+
+        function showToast(message) {
+            appToast.innerHTML = ''; appToast.textContent = message; appToast.classList.add('show');
+            clearTimeout(toastTimeout); toastTimeout = setTimeout(() => appToast.classList.remove('show'), 2200);
+        }
+        function showUndoToast(message, onUndo) {
+            appToast.innerHTML = '';
+            const span = document.createElement('span'); span.textContent = message;
+            const btn = document.createElement('button'); btn.className = 'toast-undo-btn'; btn.textContent = 'Отменить';
+            btn.onclick = () => { onUndo(); appToast.classList.remove('show'); };
+            appToast.appendChild(span); appToast.appendChild(btn); appToast.classList.add('show');
+            clearTimeout(toastTimeout); toastTimeout = setTimeout(() => appToast.classList.remove('show'), 4000);
+        }
+
+        function showConfirm(message) {
+            return new Promise(resolve => {
+                confirmMessage.textContent = message; confirmOverlay.classList.add('show');
+                const cleanup = (res) => { confirmOverlay.classList.remove('show'); confirmYesBtn.removeEventListener('click', onYes); confirmNoBtn.removeEventListener('click', onNo); resolve(res); };
+                const onYes = () => cleanup(true); const onNo = () => cleanup(false);
+                confirmYesBtn.addEventListener('click', onYes); confirmNoBtn.addEventListener('click', onNo);
+            });
+        }
+
+        function saveService() {
+            const name = newServiceName.value.trim(); const unit = newServiceUnit.value; const price = round2(parseFloat(newServicePrice.value)) || 0;
+            if (!name) { showToast('Введите название работы'); flagInvalid(newServiceName); return; }
+            const idx = servicesCatalog.findIndex(s => s.name.toLowerCase() === name.toLowerCase());
+            if (idx > -1) { servicesCatalog[idx].price = price; servicesCatalog[idx].unit = unit; } else { servicesCatalog.push({ name, unit, price }); }
+            localStorage.setItem('servicesCatalog_potolki_v4', JSON.stringify(servicesCatalog));
+            newServiceName.value = ''; newServicePrice.value = ''; updateCatalogUI(); showToast('Сохранено');
+        }
+        async function deleteCatalogService(index) {
+            if (!await showConfirm(`Удалить позицию?`)) return;
+            servicesCatalog.splice(index, 1); localStorage.setItem('servicesCatalog_potolki_v4', JSON.stringify(servicesCatalog)); updateCatalogUI();
+        }
+        function updateCatalogUI() {
+            servicesStorageList.innerHTML = ''; invoiceServiceSelect.innerHTML = '<option value="">-- Выбрать услугу --</option>';
+            servicesCatalog.sort((a,b) => a.name.localeCompare(b.name)).forEach((service, index) => {
+                const div = document.createElement('div'); div.className = 'service-item';
+                div.innerHTML = `<span class="service-item-text"><span class="name">${escapeHtml(service.name)}</span><span class="meta">${service.unit} · ${service.price} ₽</span></span><button class="delete-icon" data-index="${index}">✕</button>`;
+                servicesStorageList.appendChild(div);
+                const opt = document.createElement('option'); opt.value = index; opt.textContent = `${service.name} (${service.unit})`; invoiceServiceSelect.appendChild(opt);
+            });
+        }
+        servicesStorageList.addEventListener('click', (e) => { const btn = e.target.closest('.delete-icon'); if (btn) deleteCatalogService(parseInt(btn.dataset.index)); });
+
+        function onServiceSelectChange() {
+            const idx = invoiceServiceSelect.value;
+            if (idx !== "") { const s = servicesCatalog[idx]; invoicePrice.value = s.price; invoiceUnit.value = s.unit; invoiceServiceCustom.value = ''; }
+        }
+        function stepQuantity(delta) { let val = parseFloat(invoiceQuantity.value) || 0; invoiceQuantity.value = round2(Math.max(0.01, val + delta)); }
+        
+        function addItemToInvoice() {
+            const idx = invoiceServiceSelect.value;
+            const name = idx !== "" ? servicesCatalog[idx].name : invoiceServiceCustom.value.trim();
+            const unit = invoiceUnit.value; const qty = round2(parseFloat(invoiceQuantity.value)); const price = round2(parseFloat(invoicePrice.value));
+
+            if (!name) { showToast('Укажите название'); flagInvalid(idx !== "" ? invoiceServiceSelect : invoiceServiceCustom); return; }
+            if (!qty || qty <= 0) { flagInvalid(invoiceQuantity); return; }
+
+            currentInvoice.push({ name, unit, qty, price, sum: round2(qty * price) });
+            localStorage.setItem('currentInvoiceDraft_potolki', JSON.stringify(currentInvoice));
+            invoiceServiceSelect.value = ""; invoiceServiceCustom.value = ""; invoiceQuantity.value = "1"; invoicePrice.value = "";
+            renderInvoiceTable(); showToast('Добавлено');
+        }
+
+        function removeInvoiceItem(index) {
+            lastRemoved = { item: currentInvoice[index], index };
+            currentInvoice.splice(index, 1);
+            localStorage.setItem('currentInvoiceDraft_potolki', JSON.stringify(currentInvoice)); renderInvoiceTable();
+            showUndoToast('Позиция удалена', () => { currentInvoice.splice(lastRemoved.index, 0, lastRemoved.item); renderInvoiceTable(); });
+        }
+        async function clearInvoice() {
+            if (currentInvoice.length === 0) return;
+            if (await showConfirm('Очистить накладную?')) { currentInvoice = []; renderInvoiceTable(); }
+        }
+
+        function renderInvoiceTable() {
+            invoiceTbody.innerHTML = '';
+            itemCountBadge.textContent = currentInvoice.length + ' поз.';
+            if (currentInvoice.length === 0) {
+                invoiceTbody.innerHTML = '<tr class="empty-row"><td colspan="7">📋 Список пуст.</td></tr>';
+                document.getElementById('sticky-total-value').textContent = '0,00 ₽'; return;
+            }
+            let total = 0;
+            currentInvoice.forEach((item, index) => {
+                total += item.sum;
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td class="text-center">${index + 1}</td><td>${escapeHtml(item.name)}</td><td class="text-center">${item.unit}</td><td class="num">${item.qty}</td><td class="num">${item.price}</td><td class="num">${item.sum}</td><td class="actions-cell data-html2canvas-ignore"><button class="row-delete-btn" data-index="${index}">✕</button></td>`;
+                invoiceTbody.appendChild(tr);
+            });
+            const totalTr = document.createElement('tr');
+            totalTr.className = 'total-row';
+            totalTr.innerHTML = `<td colspan="5"><b>ИТОГО К ОПЛАТЕ:</b></td><td class="num"><b>${round2(total)}</b></td><td class="data-html2canvas-ignore"></td>`;
+            invoiceTbody.appendChild(totalTr);
+            document.getElementById('sticky-total-value').textContent = formatMoney(total);
+        }
+        invoiceTbody.addEventListener('click', (e) => { const btn = e.target.closest('.row-delete-btn'); if (btn) removeInvoiceItem(parseInt(btn.dataset.index)); });
+
+        // ФУНКЦИЯ 1: СКАЧАТЬ ОФИЦИАЛЬНЫЙ EXCEL (.XLSX)
+        function exportToExcel() {
+            if (currentInvoice.length === 0) return showToast("Таблица пуста");
+            const wsData = [
+                ["", "", "", "", "", "", ""], 
+                ["", "НАКЛАДНАЯ (РАСЧЕТ СТОИМОСТИ РАБОТ)", "", "", "", "Объект:", objNameInput.value],
+                ["", objTypeInput.value, "", "", "", "Дата:", paperDate.textContent],
+                ["", "", "", "", "", "", ""], [",", "", "", "", "", "", ""],
+                ["", "№", "Наименование услуги", "Ед. изм.", "Объем работ", "Стоимость единицы (руб.)", "Общая стоимость (руб.)"]
+            ];
+            let total = 0;
+            currentInvoice.forEach((item, index) => { total += item.sum; wsData.push(["", index + 1, item.name, item.unit, item.qty, item.price, item.sum]); });
+            wsData.push(["", "ИТОГО К ОПЛАТЕ:", "", "", "", "", total]);
+            const wb = XLSX.utils.book_new(), ws = XLSX.utils.aoa_to_sheet(wsData);
+            ws['!merges'] = [{ s: { r: wsData.length - 1, c: 1 }, e: { r: wsData.length - 1, c: 5 } }];
+            XLSX.utils.book_append_sheet(wb, ws, "Накладная");
+            XLSX.writeFile(wb, `nakladnaya_${new Date().toISOString().slice(0,10)}.xlsx`);
+        }
+
+        // ФУНКЦИЯ 2: ПРЕВРАЩЕНИЕ ТАБЛИЦЫ В КАРТИНКУ (ФОТО)
+        function exportToImage() {
+            if (currentInvoice.length === 0) return showToast("Нет данных для фото");
+            showToast("Создаем фото...");
+            
+            const target = document.getElementById('capture-target');
+            
+            // Настройки рендеринга картинки высокой четкости для Retina-дисплеев iPhone
+            html2canvas(target, {
+                scale: 2,
+                logging: false,
+                useCORS: true,
+                backgroundColor: '#ffffff'
+            }).then(canvas => {
+                const base64image = canvas.toDataURL("image/png");
+                
+                // Проверяем, поддерживает ли телефон нативное меню "Поделиться картинкой" (iOS Share Sheet)
+                if (navigator.share && navigator.canShare) {
+                    fetch(base64image)
+                        .then(res => res.blob())
+                        .then(blob => {
+                            const file = new File([blob], `nakladnaya_${new Date().toISOString().slice(0,10)}.png`, { type: 'image/png' });
+                            if (navigator.canShare({ files: [file] })) {
+                                navigator.share({ files: [file], title: 'Накладная' })
+                                    .then(() => showToast("Успешно отправлено!"))
+                                    .catch(err => {});
+                            } else {
+                                fallbackDownload(base64image);
+                            }
+                        });
+                } else {
+                    fallbackDownload(base64image);
+                }
+            });
+        }
+
+        function fallbackDownload(url) {
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `nakladnaya_${new Date().toISOString().slice(0,10)}.png`;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            showToast("Фото сохранено в Загрузки");
+        }
+
+        populateUnitSelect(newServiceUnit); populateUnitSelect(invoiceUnit);
+        try { currentInvoice = JSON.parse(localStorage.getItem('currentInvoiceDraft_potolki')) || []; } catch(e){}
+        updateCatalogUI(); renderInvoiceTable();
+    </script>
+</body>
+</html>
