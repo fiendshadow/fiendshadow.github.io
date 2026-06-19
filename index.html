@@ -3,61 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Генератор Накладных</title>
+    <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#1c1c1e" media="(prefers-color-scheme: dark)">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Учёт Работ — Натяжные Потолки</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         :root {
             --bg-color: #f2f2f7;
             --card-bg: #ffffff;
             --text-color: #1c1c1e;
             --accent-color: #007aff;
+            --accent-soft: rgba(0, 122, 255, 0.1);
             --danger-color: #ff3b30;
+            --danger-soft: rgba(255, 59, 48, 0.1);
             --border-color: #e5e5ea;
+            --success-color: #34c759;
+            --stripe-color: rgba(127, 127, 127, 0.05);
         }
-
         @media (prefers-color-scheme: dark) {
             :root {
                 --bg-color: #1c1c1e;
                 --card-bg: #2c2c2e;
                 --text-color: #ffffff;
                 --accent-color: #0a84ff;
+                --accent-soft: rgba(10, 132, 255, 0.15);
                 --danger-color: #ff453a;
+                --danger-soft: rgba(255, 69, 58, 0.15);
                 --border-color: #38383a;
+                --success-color: #30d158;
+                --stripe-color: rgba(255, 255, 255, 0.04);
             }
         }
-
         * {
             box-sizing: border-box;
             -webkit-tap-highlight-color: transparent;
         }
-
+        @media (prefers-reduced-motion: reduce) {
+            * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+        }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
             margin: 0;
-            padding: calc(env(safe-area-inset-top) + 16px) 16px calc(env(safe-area-inset-bottom) + 32px) 16px;
+            padding: calc(env(safe-area-inset-top) + 16px) 16px calc(env(safe-area-inset-bottom) + 104px) 16px;
         }
-
-        h1, h2, h3 {
-            margin-top: 0;
-            font-weight: 700;
+        h1, h2, h3 { margin-top: 0; font-weight: 700; }
+        h1 { font-size: 23px; text-align: center; margin-bottom: 4px; }
+        .subtitle { text-align: center; font-size: 13px; opacity: 0.55; margin-bottom: 20px; }
+        .card-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
+        h2 { display: flex; align-items: center; gap: 10px; font-size: 16px; margin-bottom: 0; }
+        .step-num {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 24px; height: 24px; min-width: 24px; border-radius: 50%;
+            background-color: var(--accent-color); color: #fff;
+            font-size: 12.5px; font-weight: 700;
         }
-
-        h1 { font-size: 22px; margin-bottom: 20px; text-align: center; }
-        h2 { font-size: 17px; margin-bottom: 12px; }
-
+        .count-pill {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 4px 10px;
+            font-size: 12px;
+            font-weight: 600;
+            opacity: 0.75;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
         .card {
             background-color: var(--card-bg);
-            border-radius: 12px;
+            border-radius: 14px;
             padding: 16px;
-            margin-bottom: 16px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            margin-bottom: 18px;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.05);
         }
-
-        .form-group {
-            margin-bottom: 12px;
-        }
-
+        .form-group { margin-bottom: 12px; }
         label {
             display: block;
             font-size: 13px;
@@ -65,7 +88,6 @@
             margin-bottom: 4px;
             opacity: 0.8;
         }
-
         input, select {
             width: 100%;
             height: 44px;
@@ -76,13 +98,21 @@
             padding: 0 12px;
             font-size: 16px;
             font-family: inherit;
+            transition: border-color .15s;
         }
-
-        input:focus, select:focus {
-            outline: none;
-            border-color: var(--accent-color);
+        input:focus, select:focus { outline: none; border-color: var(--accent-color); }
+        input:focus-visible, select:focus-visible, button:focus-visible, .btn:focus-visible {
+            outline: 2px solid var(--accent-color);
+            outline-offset: 2px;
         }
-
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-6px); }
+            40% { transform: translateX(6px); }
+            60% { transform: translateX(-4px); }
+            80% { transform: translateX(4px); }
+        }
+        .invalid { border-color: var(--danger-color) !important; animation: shake .3s; }
         .btn {
             display: inline-flex;
             align-items: center;
@@ -96,157 +126,175 @@
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
+            transition: opacity 0.2s, transform .15s;
         }
-
-        .btn:active { opacity: 0.7; }
+        .btn:active { opacity: 0.7; transform: scale(0.99); }
+        .btn-success { background-color: var(--success-color); }
         .btn-secondary { background-color: #8e8e93; }
-
-        .row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
+        .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .row-three { display: grid; grid-template-columns: 0.85fr 1.3fr 1fr; gap: 8px; }
+        @media (max-width: 359px) {
+            .row-three { grid-template-columns: 1fr 1fr; }
+            .row-three .form-group:last-child { grid-column: span 2; }
         }
-        
-        .row-three {
-            display: grid;
-            grid-template-columns: 1.2fr 1fr 1.2fr;
-            gap: 8px;
+        .stepper {
+            display: flex; align-items: stretch; height: 44px;
+            border: 1px solid var(--border-color); border-radius: 8px;
+            overflow: hidden; background-color: var(--bg-color);
         }
-
-        .service-list {
-            max-height: 150px;
-            overflow-y: auto;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 4px;
+        .stepper input {
+            border: none; text-align: center; height: 100%; flex: 1;
+            min-width: 0; padding: 0 2px; background: transparent;
         }
-
+        .stepper-btn {
+            width: 32px; flex-shrink: 0; border: none; background: transparent;
+            color: var(--accent-color); font-size: 19px; font-weight: 700; cursor: pointer;
+        }
+        .stepper-btn:active { background-color: rgba(127,127,127,0.15); }
+        .service-list { max-height: 160px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 4px; }
         .service-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px;
-            border-bottom: 1px solid var(--border-color);
-            font-size: 14px;
+            display: flex; justify-content: space-between; align-items: center; gap: 8px;
+            padding: 9px 8px; border-bottom: 1px solid var(--border-color); font-size: 14px;
         }
         .service-item:last-child { border-bottom: none; }
-
+        .service-item-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; overflow: hidden; }
+        .service-item-text .name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .service-item-text .meta { font-size: 12px; opacity: 0.6; font-variant-numeric: tabular-nums; }
+        .empty-hint { padding: 22px 8px; text-align: center; font-size: 13px; opacity: 0.5; line-height: 1.5; }
         .delete-icon {
             color: var(--danger-color);
             font-weight: bold;
-            padding: 4px 8px;
-            cursor: pointer;
+            background: none; border: none;
+            width: 32px; height: 32px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px; cursor: pointer; flex-shrink: 0;
         }
+        .delete-icon:active { background-color: var(--danger-soft); }
 
-        /* СТИЛИЗАЦИЯ ПОД НАСТОЯЩУЮ НАКЛАДНУЮ */
+        /* БУМАЖНЫЙ ДИЗАЙН НАКЛАДНОЙ */
         .invoice-paper {
             background: #ffffff;
             color: #000000;
-            border-radius: 8px;
+            border-radius: 10px;
             padding: 20px 12px;
             border: 1px solid #d1d1d6;
             font-family: Georgia, "Times New Roman", serif;
         }
-        
         @media (prefers-color-scheme: dark) {
-            /* Оставляем накладную светлой для реалистичного предпросмотра печатного листа */
-            .invoice-paper {
-                background: #f8f9fa;
-                color: #1c1c1e;
-            }
+            .invoice-paper { background: #f8f9fa; color: #1c1c1e; }
         }
-
-        .invoice-header {
-            text-align: center;
-            border-bottom: 2px solid #000000;
-            padding-bottom: 8px;
-            margin-bottom: 12px;
-        }
-
-        .invoice-title {
-            font-size: 15px;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 4px;
-        }
-
-        .invoice-subtitle {
-            font-size: 11px;
-            font-style: italic;
-            opacity: 0.8;
-        }
-
-        .invoice-meta {
-            font-size: 13px;
-            margin-bottom: 16px;
-            line-height: 1.4;
-        }
-
-        .invoice-meta div {
-            display: flex;
-            justify-content: space-between;
-            border-bottom: 1px dashed #c7c7cc;
-            padding: 2px 0;
-        }
+        .invoice-header { text-align: center; border-bottom: 2px solid #000000; padding-bottom: 8px; margin-bottom: 12px; }
+        .invoice-title { font-size: 15px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+        .invoice-subtitle { font-size: 11px; font-style: italic; opacity: 0.8; }
+        .invoice-meta { font-size: 13px; margin-bottom: 16px; line-height: 1.4; }
+        .invoice-meta div { display: flex; justify-content: space-between; border-bottom: 1px dashed #c7c7cc; padding: 2px 0; }
 
         .table-responsive {
             width: 100%;
             overflow-x: auto;
-        }
-
-        .invoice-paper table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 12px;
-            min-width: 460px;
-        }
-
-        .invoice-paper th {
-            background: #e5e5ea;
-            color: #000000;
-            font-weight: bold;
+            overflow-y: auto;
+            max-height: 380px;
             border: 1px solid #000000;
-            padding: 6px 4px;
-            text-align: center;
+            border-radius: 4px;
+            -webkit-overflow-scrolling: touch;
         }
-
-        .invoice-paper td {
-            border: 1px solid #000000;
-            padding: 6px 4px;
-            vertical-align: middle;
-        }
-
+        table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: left; min-width: 470px; }
+        th, td { padding: 8px 6px; border: 1px solid #000000; vertical-align: middle; }
+        th { background-color: #e5e5ea; color: #000000; font-weight: bold; text-align: center; position: sticky; top: 0; z-index: 2; }
+        th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
         .text-center { text-align: center; }
-        .text-right { text-align: right; }
-
-        .invoice-paper .total-row {
-            font-weight: bold;
-            background: #f2f2f7;
-        }
         
-        .invoice-paper .total-row td {
+        @keyframes rowIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .invoice-row { animation: rowIn .25s ease; }
+        .empty-row td { text-align: center; padding: 34px 12px; opacity: 0.5; font-size: 13px; border: none; }
+        
+        .total-row td {
+            font-weight: 700;
+            background-color: #f2f2f7;
             border-top: 2px solid #000000;
+            position: sticky;
+            bottom: 0;
         }
+        .total-row .total-amount { font-size: 15px; }
+        .actions-cell { text-align: center; width: 36px; padding: 4px; border: none !important; background: transparent !important; }
+        .row-delete-btn {
+            background-color: var(--danger-soft); color: var(--danger-color);
+            border: none; width: 28px; height: 28px; border-radius: 50%;
+            font-size: 12px; font-weight: 700; cursor: pointer;
+        }
+        .row-delete-btn:active { background-color: rgba(255,59,48,0.3); }
 
-        .remove-cell {
-            color: var(--danger-color);
-            text-align: center;
-            font-weight: bold;
-            font-size: 14px;
-            cursor: pointer;
-            border: none !important;
-            background: transparent !important;
-            width: 24px;
+        /* Плавающий нижний бар */
+        .sticky-bar {
+            position: fixed; left: 0; right: 0; bottom: 0;
+            background-color: var(--card-bg);
+            border-top: 1px solid var(--border-color);
+            padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+            display: flex; align-items: center; justify-content: space-between; gap: 12px;
+            box-shadow: 0 -6px 18px rgba(0,0,0,0.08);
+            z-index: 150;
         }
+        .sticky-bar-info { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
+        .sticky-bar-label { font-size: 11.5px; opacity: 0.6; }
+        .sticky-bar-value { font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; }
+        .sticky-bar-actions { display: flex; gap: 8px; flex-shrink: 0; }
+        
+        .icon-btn {
+            height: 44px; border: none; border-radius: 10px;
+            font-size: 14px; font-weight: 600; padding: 0 16px;
+            display: flex; align-items: center; gap: 6px; cursor: pointer; transition: transform .15s;
+        }
+        .icon-btn-primary { background-color: #107c41; color: #fff; } /* Цвет Excel */
+        .icon-btn-secondary { background-color: var(--bg-color); color: var(--danger-color); border: 1px solid var(--border-color); width: 44px; justify-content: center; padding: 0; }
+        .icon-btn:active { opacity: 0.7; transform: scale(0.96); }
+
+        /* Уведомления */
+        #app-toast {
+            position: fixed;
+            left: 50%; bottom: calc(96px + env(safe-area-inset-bottom));
+            transform: translate(-50%, 16px);
+            background: rgba(28,28,30,0.94); color: #fff;
+            padding: 10px 14px; border-radius: 10px; font-size: 14px;
+            display: flex; align-items: center; gap: 14px; justify-content: space-between;
+            opacity: 0; pointer-events: none;
+            transition: opacity .25s, transform .25s;
+            z-index: 200; max-width: 88%;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+        }
+        #app-toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+        .toast-undo-btn { background: none; border: none; color: #5ab1ff; font-weight: 700; font-size: 14px; padding: 4px; cursor: pointer; flex-shrink: 0; }
+
+        /* Окна подтверждения */
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 300; opacity: 0; pointer-events: none; transition: opacity .2s;
+            padding: 24px;
+        }
+        .modal-overlay.show { opacity: 1; pointer-events: auto; }
+        .modal-box {
+            background: var(--card-bg); border-radius: 14px; padding: 20px;
+            max-width: 320px; width: 100%; text-align: center;
+            transform: scale(0.92); transition: transform .2s;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.3);
+        }
+        .modal-overlay.show .modal-box { transform: scale(1); }
+        .modal-box p { margin: 0 0 18px; font-size: 15px; line-height: 1.4; }
+        .modal-actions { display: flex; gap: 10px; }
+        .modal-actions .btn { height: 42px; font-size: 15px; }
     </style>
 </head>
 <body>
-
-    <h1>Учёт Работ</h1>
+    <h1>🧾 Учёт работ</h1>
+    <p class="subtitle">Потолки & Освещение → Накладная → Excel</p>
 
     <div class="card">
-        <h2>Данные накладной</h2>
+        <div class="card-header">
+            <h2><span class="step-num">0</span>Данные накладной</h2>
+        </div>
         <div class="form-group">
             <label for="obj-name">Объект / Адрес</label>
             <input type="text" id="obj-name" value="ул. Шиназская 26">
@@ -258,67 +306,68 @@
     </div>
 
     <div class="card">
-        <h2>1. Справочник услуг (Цены)</h2>
+        <div class="card-header">
+            <h2><span class="step-num">1</span>Справочник услуг (цены)</h2>
+        </div>
         <div class="form-group">
             <label for="new-service-name">Название услуги/работы</label>
-            <input type="text" id="new-service-name" placeholder="Например: Сложный угол">
+            <input type="text" id="new-service-name" placeholder="Например: Световой профиль">
         </div>
         <div class="row">
             <div class="form-group">
                 <label for="new-service-unit">Ед. изм.</label>
-                <select id="new-service-unit">
-                    <option value="кв. м">кв. м</option>
-                    <option value="п/м">п/м</option>
-                    <option value="ед.">ед.</option>
-                </select>
+                <select id="new-service-unit"></select>
             </div>
             <div class="form-group">
                 <label for="new-service-price">Цена за ед. (₽)</label>
-                <input type="number" id="new-service-price" inputmode="decimal" placeholder="0.00">
+                <input type="number" id="new-service-price" inputmode="decimal" min="0" step="0.01" placeholder="0.00">
             </div>
         </div>
-        <button class="btn" onclick="saveService()">Сохранить / Изменить цену</button>
-
-        <h3 style="font-size: 13px; margin-top: 14px; margin-bottom: 6px;">Сохраненный прайс-лист:</h3>
+        <button class="btn" onclick="saveService()">Сохранить в справочник</button>
+        <h3 style="font-size: 13px; margin-top: 16px; margin-bottom: 6px; opacity: 0.7;">Сохранённые позиции</h3>
         <div class="service-list" id="services-storage-list"></div>
     </div>
 
     <div class="card">
-        <h2>2. Составление накладной</h2>
+        <div class="card-header">
+            <h2><span class="step-num">2</span>Составление накладной</h2>
+        </div>
         <div class="form-group">
-            <label for="invoice-service-select">Выберите из прайса</label>
+            <label for="invoice-service-select">Выберите из справочника</label>
             <select id="invoice-service-select" onchange="onServiceSelectChange()">
                 <option value="">-- Выбрать услугу --</option>
             </select>
         </div>
         <div class="form-group">
             <label for="invoice-service-custom">Или введите вручную</label>
-            <input type="text" id="invoice-service-custom" placeholder="Если нет в списке выше">
+            <input type="text" id="invoice-service-custom" placeholder="Если нет в каталоге">
         </div>
-        
         <div class="row-three">
             <div class="form-group">
                 <label for="invoice-unit">Ед. изм.</label>
-                <select id="invoice-unit">
-                    <option value="кв. м">кв. м</option>
-                    <option value="п/м">п/м</option>
-                    <option value="ед.">ед.</option>
-                </select>
+                <select id="invoice-unit"></select>
             </div>
             <div class="form-group">
                 <label for="invoice-quantity">Объем</label>
-                <input type="number" id="invoice-quantity" inputmode="decimal" step="any" value="1">
+                <div class="stepper">
+                    <button type="button" class="stepper-btn" onclick="stepQuantity(-1)" aria-label="Уменьшить">−</button>
+                    <input type="number" id="invoice-quantity" inputmode="decimal" value="1" min="0.01" step="0.01">
+                    <button type="button" class="stepper-btn" onclick="stepQuantity(1)" aria-label="Увеличить">+</button>
+                </div>
             </div>
             <div class="form-group">
                 <label for="invoice-price">Цена (₽)</label>
-                <input type="number" id="invoice-price" inputmode="decimal" placeholder="0.00">
+                <input type="number" id="invoice-price" inputmode="decimal" min="0" step="0.01" placeholder="0.00">
             </div>
         </div>
-        <button class="btn" onclick="addItemToInvoice()" style="background-color: #34c759;">Добавить в накладную</button>
+        <button class="btn btn-success" onclick="addItemToInvoice()">Добавить в накладную</button>
     </div>
 
-    <div class="card" style="padding: 10px;">
-        <h2>3. Предпросмотр накладной</h2>
+    <div class="card" id="invoice-table-card" style="padding: 10px;">
+        <div class="card-header" style="padding: 6px 6px 0 6px;">
+            <h2><span class="step-num">3</span>Предпросмотр накладной</h2>
+            <span class="count-pill" id="item-count-badge">0 позиций</span>
+        </div>
         
         <div class="invoice-paper">
             <div class="invoice-header">
@@ -328,7 +377,7 @@
             
             <div class="invoice-meta">
                 <div><span><b>Объект:</b></span><span id="paper-obj-name">ул. Шиназская 26</span></div>
-                <div><span><b>Дата:</b></span><span id="paper-date">18.06.2026</span></div>
+                <div><span><b>Дата:</b></span><span id="paper-date">--.--.----</span></div>
             </div>
 
             <div class="table-responsive">
@@ -338,26 +387,45 @@
                             <th style="width: 30px;">№</th>
                             <th>Наименование услуги</th>
                             <th style="width: 50px;">Ед. изм.</th>
-                            <th style="width: 60px;">Объем работ</th>
-                            <th style="width: 80px;">Стоимость единицы (руб.)</th>
-                            <th style="width: 90px;">Общая стоимость (руб.)</th>
-                            <th class="remove-cell" style="border:none; background:transparent;"></th>
+                            <th style="width: 55px;" class="num">Объем</th>
+                            <th style="width: 75px;" class="num">Цена (руб.)</th>
+                            <th style="width: 85px;" class="num">Сумма (руб.)</th>
+                            <th class="actions-cell"></th>
                         </tr>
                     </thead>
-                    <tbody id="invoice-tbody">
-                        </tbody>
+                    <tbody id="invoice-tbody"></tbody>
                 </table>
             </div>
         </div>
+    </div>
 
-        <div style="margin-top: 16px;" class="row">
-            <button class="btn btn-secondary" onclick="clearInvoice()">Очистить</button>
-            <button class="btn" onclick="exportToCSV()">Экспорт (CSV)</button>
+    <div class="sticky-bar">
+        <div class="sticky-bar-info">
+            <span class="sticky-bar-label">Итого к оплате</span>
+            <span class="sticky-bar-value" id="sticky-total-value">0,00 ₽</span>
+        </div>
+        <div class="sticky-bar-actions">
+            <button class="icon-btn icon-btn-secondary" onclick="clearInvoice()" aria-label="Очистить накладную">🗑</button>
+            <button class="icon-btn icon-btn-primary" onclick="exportToExcel()" aria-label="Скачать Excel документ">📊 Экспорт Excel</button>
+        </div>
+    </div>
+
+    <div id="app-toast"></div>
+
+    <div class="modal-overlay" id="confirm-overlay">
+        <div class="modal-box">
+            <p id="confirm-message">Вы уверены?</p>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="confirm-no">Отмена</button>
+                <button class="btn" id="confirm-yes" style="background-color: var(--danger-color);">Удалить</button>
+            </div>
         </div>
     </div>
 
     <script>
-        // Твоя реальная база данных из файла Таблица 2.xlsx
+        const UNITS = ['кв. м', 'п/м', 'ед.', 'шт.'];
+
+        // Реальные исходные данные по натяжным потолкам
         const defaultServices = [
             { name: "Прямой потолок", unit: "кв. м", price: 1400 },
             { name: "Монтаж сан.узел", unit: "кв. м", price: 1500 },
@@ -367,24 +435,26 @@
             { name: "Вывод проводов по схеме", unit: "ед.", price: 300 }
         ];
 
-        let servicesCatalog = JSON.parse(localStorage.getItem('servicesCatalog_potolki'));
-        if (!servicesCatalog || servicesCatalog.length === 0) {
-            servicesCatalog = defaultServices;
-            localStorage.setItem('servicesCatalog_potolki', JSON.stringify(servicesCatalog));
+        let servicesCatalog = [];
+        let currentInvoice = [];
+        let lastRemoved = null;
+        let toastTimeout = null;
+
+        try { 
+            servicesCatalog = JSON.parse(localStorage.getItem('servicesCatalog_potolki_v4')); 
+            if (!servicesCatalog || servicesCatalog.length === 0) {
+                servicesCatalog = defaultServices;
+                localStorage.setItem('servicesCatalog_potolki_v4', JSON.stringify(servicesCatalog));
+            }
+        } catch (e) { 
+            servicesCatalog = defaultServices; 
         }
 
-        let currentInvoice = [];
-
-        // Синхронизация шапки в реальном времени
         const objNameInput = document.getElementById('obj-name');
         const objTypeInput = document.getElementById('obj-type');
         const paperObjName = document.getElementById('paper-obj-name');
         const paperWorkType = document.getElementById('paper-work-type');
-        
-        document.getElementById('paper-date').textContent = new Date().toLocaleDateString('ru-RU');
-
-        objNameInput.addEventListener('input', () => paperObjName.textContent = objNameInput.value);
-        objTypeInput.addEventListener('input', () => paperWorkType.textContent = objTypeInput.value);
+        const paperDate = document.getElementById('paper-date');
 
         const newServiceName = document.getElementById('new-service-name');
         const newServiceUnit = document.getElementById('new-service-unit');
@@ -396,20 +466,81 @@
         const invoiceQuantity = document.getElementById('invoice-quantity');
         const invoicePrice = document.getElementById('invoice-price');
         const invoiceTbody = document.getElementById('invoice-tbody');
+        const itemCountBadge = document.getElementById('item-count-badge');
+        const appToast = document.getElementById('app-toast');
+        const confirmOverlay = document.getElementById('confirm-overlay');
+        const confirmMessage = document.getElementById('confirm-message');
+        const confirmYesBtn = document.getElementById('confirm-yes');
+        const confirmNoBtn = document.getElementById('confirm-no');
 
-        // Инициализация при загрузке
-        paperObjName.textContent = objNameInput.value;
-        paperWorkType.textContent = objTypeInput.value;
-        updateCatalogUI();
-        renderInvoiceTable();
+        // Живая связь данных шапки
+        paperDate.textContent = new Date().toLocaleDateString('ru-RU');
+        objNameInput.addEventListener('input', () => paperObjName.textContent = objNameInput.value);
+        objTypeInput.addEventListener('input', () => paperWorkType.textContent = objTypeInput.value);
 
+        /* ---------- Помощники ---------- */
+        function escapeHtml(str) {
+            return String(str).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+        }
+        function round2(num) {
+            if (!Number.isFinite(num)) return 0;
+            return Math.round((num + Number.EPSILON) * 100) / 100;
+        }
+        function formatMoney(num) {
+            return round2(num).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₽';
+        }
+        function formatQty(num) {
+            return round2(num).toLocaleString('ru-RU', { maximumFractionDigits: 2 });
+        }
+        function pluralizeItems(n) {
+            const mod10 = n % 10, mod100 = n % 100;
+            if (mod10 === 1 && mod100 !== 11) return `${n} позиция`;
+            if ([2, 3, 4].includes(mod10) && ![12, 13, 14].includes(mod100)) return `${n} позиции`;
+            return `${n} позиций`;
+        }
+        function flagInvalid(el) {
+            el.classList.add('invalid'); el.focus();
+            setTimeout(() => el.classList.remove('invalid'), 350);
+        }
+        function populateUnitSelect(selectEl) {
+            selectEl.innerHTML = UNITS.map(u => `<option value="${u}">${u}</option>`).join('');
+        }
+
+        /* ---------- Уведомления и Отмена ---------- */
+        function showToast(message) {
+            appToast.innerHTML = ''; appToast.textContent = message; appToast.classList.add('show');
+            clearTimeout(toastTimeout); toastTimeout = setTimeout(() => appToast.classList.remove('show'), 2200);
+        }
+        function showUndoToast(message, onUndo) {
+            appToast.innerHTML = '';
+            const span = document.createElement('span'); span.textContent = message;
+            const btn = document.createElement('button'); btn.className = 'toast-undo-btn'; btn.textContent = 'Отменить';
+            btn.onclick = () => { onUndo(); appToast.classList.remove('show'); };
+            appToast.appendChild(span); appToast.appendChild(btn); appToast.classList.add('show');
+            clearTimeout(toastTimeout); toastTimeout = setTimeout(() => appToast.classList.remove('show'), 4000);
+        }
+
+        /* ---------- Окна подтверждения ---------- */
+        function showConfirm(message) {
+            return new Promise(resolve => {
+                confirmMessage.textContent = message; confirmOverlay.classList.add('show');
+                const cleanup = (result) => {
+                    confirmOverlay.classList.remove('show');
+                    confirmYesBtn.removeEventListener('click', onYes); confirmNoBtn.removeEventListener('click', onNo);
+                    resolve(result);
+                };
+                const onYes = () => cleanup(true); const onNo = () => cleanup(false);
+                confirmYesBtn.addEventListener('click', onYes); confirmNoBtn.addEventListener('click', onNo);
+            });
+        }
+
+        /* ---------- Управление Справочником ---------- */
         function saveService() {
             const name = newServiceName.value.trim();
             const unit = newServiceUnit.value;
-            const price = parseFloat(newServicePrice.value) || 0;
-
-            if (!name) return alert('Введите название работы');
-
+            const price = round2(parseFloat(newServicePrice.value)) || 0;
+            if (!name) { showToast('Введите название работы'); flagInvalid(newServiceName); return; }
+            
             const existingIndex = servicesCatalog.findIndex(s => s.name.toLowerCase() === name.toLowerCase());
             if (existingIndex > -1) {
                 servicesCatalog[existingIndex].price = price;
@@ -417,41 +548,48 @@
             } else {
                 servicesCatalog.push({ name, unit, price });
             }
-
-            localStorage.setItem('servicesCatalog_potolki', JSON.stringify(servicesCatalog));
-            newServiceName.value = '';
-            newServicePrice.value = '';
+            localStorage.setItem('servicesCatalog_potolki_v4', JSON.stringify(servicesCatalog));
+            newServiceName.value = ''; newServicePrice.value = '';
             updateCatalogUI();
+            showToast('Сохранено в справочнике');
         }
-
-        function deleteCatalogService(index) {
-            if (confirm("Удалить позицию из справочника?")) {
-                servicesCatalog.splice(index, 1);
-                localStorage.setItem('servicesCatalog_potolki', JSON.stringify(servicesCatalog));
-                updateCatalogUI();
-            }
+        async function deleteCatalogService(index) {
+            const service = servicesCatalog[index]; if (!service) return;
+            const ok = await showConfirm(`Удалить «${service.name}» из справочника?`);
+            if (!ok) return;
+            servicesCatalog.splice(index, 1);
+            localStorage.setItem('servicesCatalog_potolki_v4', JSON.stringify(servicesCatalog));
+            updateCatalogUI();
+            showToast('Удалено из справочника');
         }
-
         function updateCatalogUI() {
             servicesStorageList.innerHTML = '';
             invoiceServiceSelect.innerHTML = '<option value="">-- Выбрать услугу --</option>';
-
+            if (servicesCatalog.length === 0) {
+                servicesStorageList.innerHTML = '<div class="empty-hint">Справочник пуст.</div>';
+            }
+            servicesCatalog.sort((a, b) => a.name.localeCompare(b.name));
             servicesCatalog.forEach((service, index) => {
-                const div = document.createElement('div');
-                div.className = 'service-item';
+                const div = document.createElement('div'); div.className = 'service-item';
                 div.innerHTML = `
-                    <span>${service.name} (${service.unit}) — <b>${service.price} ₽</b></span>
-                    <span class="delete-icon" onclick="deleteCatalogService(${index})">✕</span>
+                    <span class="service-item-text">
+                        <span class="name">${escapeHtml(service.name)}</span>
+                        <span class="meta">${escapeHtml(service.unit)} · ${round2(service.price)} ₽</span>
+                    </span>
+                    <button class="delete-icon" data-index="${index}" aria-label="Удалить">✕</button>
                 `;
                 servicesStorageList.appendChild(div);
-
                 const option = document.createElement('option');
-                option.value = index;
-                option.textContent = `${service.name} (${service.unit})`;
+                option.value = index; option.textContent = `${service.name} (${service.unit})`;
                 invoiceServiceSelect.appendChild(option);
             });
         }
+        servicesStorageList.addEventListener('click', (e) => {
+            const btn = e.target.closest('.delete-icon');
+            if (btn) deleteCatalogService(parseInt(btn.dataset.index, 10));
+        });
 
+        /* ---------- Обработка Формы Таблицы ---------- */
         function onServiceSelectChange() {
             const selectedIndex = invoiceServiceSelect.value;
             if (selectedIndex !== "") {
@@ -463,116 +601,165 @@
                 invoicePrice.value = '';
             }
         }
-
+        invoiceServiceCustom.addEventListener('input', () => {
+            if (invoiceServiceCustom.value.trim() !== '') invoiceServiceSelect.value = '';
+        });
+        function stepQuantity(delta) {
+            let val = parseFloat(invoiceQuantity.value) || 0;
+            val = round2(Math.max(0.01, val + delta));
+            invoiceQuantity.value = val;
+        }
         function addItemToInvoice() {
-            let name = "";
-            let unit = invoiceUnit.value;
-
             const selectedIndex = invoiceServiceSelect.value;
-            if (selectedIndex !== "") {
-                name = servicesCatalog[selectedIndex].name;
-            } else {
-                name = invoiceServiceCustom.value.trim();
-            }
+            const unit = invoiceUnit.value;
+            const name = selectedIndex !== "" ? servicesCatalog[selectedIndex].name : invoiceServiceCustom.value.trim();
+            const qty = round2(parseFloat(invoiceQuantity.value));
+            const price = round2(parseFloat(invoicePrice.value));
 
-            const qty = parseFloat(invoiceQuantity.value) || 0;
-            const price = parseFloat(invoicePrice.value) || 0;
+            if (!name) { showToast('Выберите или введите работу'); flagInvalid(selectedIndex !== "" ? invoiceServiceSelect : invoiceServiceCustom); return; }
+            if (!Number.isFinite(qty) || qty <= 0) { showToast('Укажите объем больше нуля'); flagInvalid(invoiceQuantity); return; }
+            if (!Number.isFinite(price) || price < 0) { showToast('Укажите цену'); flagInvalid(invoicePrice); return; }
 
-            if (!name) return alert('Выберите работу или введите вручную');
-            if (qty <= 0) return alert('Укажите объем работ');
+            currentInvoice.push({ name, unit, qty, price, sum: round2(qty * price) });
+            saveDraft();
 
-            currentInvoice.push({
-                name,
-                unit,
-                qty,
-                price,
-                sum: qty * price
-            });
-
-            invoiceServiceSelect.value = "";
-            invoiceServiceCustom.value = "";
-            invoiceQuantity.value = "1";
-            invoicePrice.value = "";
+            invoiceServiceSelect.value = ""; invoiceServiceCustom.value = "";
+            invoiceQuantity.value = "1"; invoicePrice.value = "";
 
             renderInvoiceTable();
+            showToast('Добавлено в накладную');
+            document.getElementById('invoice-table-card').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
 
+        /* ---------- Отрисовка накладной ---------- */
         function removeInvoiceItem(index) {
+            lastRemoved = { item: currentInvoice[index], index };
             currentInvoice.splice(index, 1);
-            renderInvoiceTable();
+            saveDraft(); renderInvoiceTable();
+            showUndoToast('Позиция удалена', restoreLastRemoved);
         }
-
-        function clearInvoice() {
-            if (confirm("Очистить текущую накладную?")) {
-                currentInvoice = [];
-                renderInvoiceTable();
+        function restoreLastRemoved() {
+            if (!lastRemoved) return;
+            currentInvoice.splice(lastRemoved.index, 0, lastRemoved.item);
+            lastRemoved = null; saveDraft(); renderInvoiceTable();
+        }
+        async function clearInvoice() {
+            if (currentInvoice.length === 0) { showToast('Список уже пуст'); return; }
+            const ok = await showConfirm('Очистить текущую накладную? Это действие нельзя отменить.');
+            if (ok) {
+                currentInvoice = []; saveDraft(); renderInvoiceTable();
+                showToast('Накладная очищена');
             }
         }
-
+        function saveDraft() {
+            try { localStorage.setItem('currentInvoiceDraft_potolki', JSON.stringify(currentInvoice)); } catch (e) {}
+        }
+        function loadDraft() {
+            try {
+                const saved = JSON.parse(localStorage.getItem('currentInvoiceDraft_potolki'));
+                if (Array.isArray(saved)) currentInvoice = saved;
+            } catch (e) { currentInvoice = []; }
+        }
         function renderInvoiceTable() {
             invoiceTbody.innerHTML = '';
-            let totalSum = 0;
+            itemCountBadge.textContent = pluralizeItems(currentInvoice.length);
 
+            if (currentInvoice.length === 0) {
+                invoiceTbody.innerHTML = '<tr class="empty-row"><td colspan="7">📋 Список пуст.<br>Добавьте позиции выше.</td></tr>';
+                document.getElementById('sticky-total-value').textContent = '0,00 ₽';
+                return;
+            }
+
+            let totalSum = 0;
             currentInvoice.forEach((item, index) => {
                 totalSum += item.sum;
                 const tr = document.createElement('tr');
+                tr.className = 'invoice-row';
                 tr.innerHTML = `
                     <td class="text-center">${index + 1}</td>
-                    <td>${item.name}</td>
-                    <td class="text-center">${item.unit}</td>
-                    <td class="text-center">${item.qty}</td>
-                    <td class="text-right">${item.price}</td>
-                    <td class="text-right">${item.sum}</td>
-                    <td class="remove-cell" onclick="removeInvoiceItem(${index})">✕</td>
+                    <td>${escapeHtml(item.name)}</td>
+                    <td class="text-center">${escapeHtml(item.unit)}</td>
+                    <td class="num">${formatQty(item.qty)}</td>
+                    <td class="num">${round2(item.price)}</td>
+                    <td class="num">${round2(item.sum)}</td>
+                    <td class="actions-cell"><button class="row-delete-btn" data-index="${index}">✕</button></td>
                 `;
                 invoiceTbody.appendChild(tr);
             });
 
-            // Строка ИТОГО К ОПЛАТЕ точно как в исходнике
-            if (currentInvoice.length > 0) {
-                const totalTr = document.createElement('tr');
-                totalTr.className = 'total-row';
-                totalTr.innerHTML = `
-                    <td colspan="5"><b>ИТОГО К ОПЛАТЕ:</b></td>
-                    <td class="text-right"><b>${totalSum}</b></td>
-                    <td style="border:none; background:transparent;"></td>
-                `;
-                invoiceTbody.appendChild(totalTr);
-            }
+            const totalTr = document.createElement('tr');
+            totalTr.className = 'total-row';
+            totalTr.innerHTML = `
+                <td colspan="5"><b>ИТОГО К ОПЛАТЕ:</b></td>
+                <td class="num total-amount"><b>${round2(totalSum)}</b></td>
+                <td style="border:none; background:transparent;"></td>
+            `;
+            invoiceTbody.appendChild(totalTr);
+            document.getElementById('sticky-total-value').textContent = formatMoney(totalSum);
         }
+        invoiceTbody.addEventListener('click', (e) => {
+            const btn = e.target.closest('.row-delete-btn');
+            if (btn) removeInvoiceItem(parseInt(btn.dataset.index, 10));
+        });
 
-        function exportToCSV() {
-            if (currentInvoice.length === 0) return alert("Добавьте хотя бы одну строку для экспорта.");
+        /* ---------- Экспорт в правильный Excel (.xlsx) ---------- */
+        function exportToExcel() {
+            if (currentInvoice.length === 0) return showToast("Добавьте строки для экспорта.");
 
-            let csvContent = "\uFEFF"; // Поддержка кириллицы в Excel
-            
-            // Шапка накладной
-            csvContent += `;;;;;Объект:;\"${objNameInput.value}\"\n`;
-            csvContent += `;;;;;Дата:;\"${document.getElementById('paper-date').textContent}\"\n`;
-            csvContent += `,\"НАКЛАДНАЯ (РАСЧЕТ СТОИМОСТИ РАБОТ)\"\n`;
-            csvContent += `,\"${objTypeInput.value}\"\n\n`;
-            
-            // Заголовки таблицы
-            csvContent += "№;Наименование услуги;Ед. изм.;Объем работ;Стоимость единицы (руб.);Общая стоимость (руб.)\n";
+            const dateStr = paperDate.textContent;
+            const objName = objNameInput.value;
+            const objType = objTypeInput.value;
+
+            // Формируем структуру листа Excel в соответствии с твоей структурой
+            const wsData = [
+                ["", "", "", "", "", "", ""], 
+                ["", "НАКЛАДНАЯ (РАСЧЕТ СТОИМОСТИ РАБОТ)", "", "", "", "Объект:", objName],
+                ["", objType, "", "", "", "Дата:", dateStr],
+                ["", "", "", "", "", "", ""],
+                ["", "", "", "", "", "", ""],
+                ["", "№", "Наименование услуги", "Ед. изм.", "Объем работ", "Стоимость единицы (руб.)", "Общая стоимость (руб.)"]
+            ];
 
             let totalSum = 0;
             currentInvoice.forEach((item, index) => {
                 totalSum += item.sum;
-                csvContent += `${index + 1};\"${item.name}\";\"${item.unit}\";\"${item.qty}\";\"${item.price}\";\"${item.sum}\"\n`;
+                wsData.push([
+                    "", 
+                    index + 1,
+                    item.name,
+                    item.unit,
+                    item.qty,
+                    item.price,
+                    item.sum
+                ]);
             });
-            
-            csvContent += `\n"ИТОГО К ОПЛАТЕ";;;;;\"${totalSum}\"\n`;
 
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement("a");
-            const dateStr = new Date().toISOString().slice(0,10);
-            
-            link.href = URL.createObjectURL(blob);
-            link.setAttribute("download", `nakladnaya_${dateStr}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            wsData.push(["", "ИТОГО К ОПЛАТЕ:", "", "", "", "", totalSum]);
+
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+            // Настройка объединения ячеек для строки ИТОГО (с колонки B по F)
+            const totalRowIndex = wsData.length - 1;
+            ws['!merges'] = [
+                { s: { r: totalRowIndex, c: 1 }, e: { r: totalRowIndex, c: 5 } }
+            ];
+
+            XLSX.utils.book_append_sheet(wb, ws, "Накладная");
+            XLSX.writeFile(wb, `nakladnaya_${new Date().toISOString().slice(0,10)}.xlsx`);
+            showToast('Файл Excel сформирован');
         }
+
+        /* ---------- Старт ---------- */
+        populateUnitSelect(newServiceUnit);
+        populateUnitSelect(invoiceUnit);
+        
+        paperObjName.textContent = objNameInput.value;
+        paperWorkType.textContent = objTypeInput.value;
+        
+        loadDraft();
+        updateCatalogUI();
+        renderInvoiceTable();
     </script>
 </body>
 </html>
